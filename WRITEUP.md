@@ -45,4 +45,4 @@ I'd add tests for the guardrails (length limits, JSON parsing, fence stripping) 
 
 ## Which AI tools were used
 
-Claude was used two ways. **Inside the product**, it is the reasoning engine performing the Trust Layer analysis. **During development**, Claude (via Cursor) was a build assistant that helped scaffold and refine the code and docs. All architecture and design decisions were reviewed and directed by me.
+Claude was used two ways. **Inside the product**, it is the reasoning engine performing the Trust Layer analysis. **During development**, Claude was used to help refine this documentation. All coding, architecture, and design decisions were reviewed and directed by me.
