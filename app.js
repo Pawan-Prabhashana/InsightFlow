@@ -131,7 +131,7 @@ async function runAnalysis() {
       return;
     }
 
-    renderRaw(data);
+    renderBrief(data);
   } catch {
     showError('Network error — please check your connection and try again.');
   } finally {
@@ -139,24 +139,196 @@ async function runAnalysis() {
   }
 }
 
-// --- Render (temporary) -------------------------------------------------
-// Raw JSON dump so we can confirm the end-to-end pipeline works.
-// This will be replaced by a rich renderer in Part 4.
+// --- Render (Part 4) -------------------------------------------------------
+// Full Trust Layer brief renderer. Each sub-function returns a DOM Element.
+// renderBrief() orchestrates them and injects into the right panel.
 
-function renderRaw(data) {
-  briefPanelBody.innerHTML = `
-    <div class="raw-output-wrap">
-      <p class="raw-output-label">
-        Raw API response
-        <span class="raw-output-badge">temporary — Part 4 will make this readable</span>
-      </p>
-      <pre class="raw-output">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
-    </div>
-  `;
+function renderBrief(data) {
+  // Clear previous results cleanly before painting new ones
+  briefPanelBody.innerHTML = '';
+
+  const output = document.createElement('div');
+  output.className = 'brief-output';
+
+  // 1. Escalation banner — always first if present
+  if (data.escalate) {
+    output.appendChild(renderEscalationBanner(data.escalation_reason));
+  }
+
+  // 2. Main content wrapper (de-emphasized when escalated)
+  const content = document.createElement('div');
+  content.className = data.escalate
+    ? 'brief-content brief-content--escalated'
+    : 'brief-content';
+
+  if (data.escalate) {
+    const sublabel = document.createElement('p');
+    sublabel.className = 'escalated-sublabel';
+    sublabel.textContent = 'Best-effort analysis only — do not publish without expert review.';
+    content.appendChild(sublabel);
+  }
+
+  content.appendChild(renderTldr(data.tldr));
+  content.appendChild(renderThemes(data.themes));
+  content.appendChild(renderVerifyList(data.verify_before_publishing));
+
+  // Gaps: hidden entirely when array is empty (per spec)
+  if (Array.isArray(data.gaps) && data.gaps.length > 0) {
+    content.appendChild(renderGaps(data.gaps));
+  }
+
+  // Suggested angles: hidden entirely when escalate is true (per API contract)
+  if (!data.escalate && Array.isArray(data.suggested_angles) && data.suggested_angles.length > 0) {
+    content.appendChild(renderAngles(data.suggested_angles));
+  }
+
+  output.appendChild(content);
+  briefPanelBody.appendChild(output);
 }
 
+function renderEscalationBanner(reason) {
+  const el = document.createElement('div');
+  el.className = 'escalation-banner';
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `
+    <div class="escalation-icon" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 2.5 2.5 17h15L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <line x1="10" y1="8.5" x2="10" y2="12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="10" cy="14.75" r="0.875" fill="currentColor"/>
+      </svg>
+    </div>
+    <div>
+      <strong class="escalation-heading">This needs a human, not auto-output</strong>
+      ${reason ? `<p class="escalation-reason">${escapeHtml(reason)}</p>` : ''}
+    </div>
+  `;
+  return el;
+}
+
+function renderTldr(tldr) {
+  const el = document.createElement('div');
+  el.className = 'brief-section';
+  el.innerHTML = `
+    <h3 class="brief-section-heading">Summary</h3>
+    <p class="brief-tldr">${escapeHtml(tldr || '')}</p>
+  `;
+  return el;
+}
+
+function renderThemes(themes) {
+  const el = document.createElement('div');
+  el.className = 'brief-section';
+
+  if (!Array.isArray(themes) || themes.length === 0) {
+    el.innerHTML = `
+      <h3 class="brief-section-heading">Findings</h3>
+      <p class="brief-empty-note">No structured findings in this analysis.</p>
+    `;
+    return el;
+  }
+
+  let html = '<h3 class="brief-section-heading">Findings</h3><div class="themes-list">';
+
+  for (const theme of themes) {
+    html += `<div class="theme-block">`;
+    html += `<h4 class="theme-title">${escapeHtml(theme.title || 'Untitled theme')}</h4>`;
+
+    const claims = Array.isArray(theme.claims) ? theme.claims : [];
+    if (claims.length === 0) {
+      html += `<p class="brief-empty-note">No claims recorded for this theme.</p>`;
+    } else {
+      for (const claim of claims) {
+        const conf     = claim.confidence || 'Medium';
+        const confKey  = conf.toLowerCase();   // 'high' | 'medium' | 'low'
+        const isFlagged = claim.flagged === true;
+
+        html += `<div class="claim-row${isFlagged ? ' claim-row--flagged' : ''}">`;
+        html += `  <div class="claim-main">`;
+        html += `    <p class="claim-text">${escapeHtml(claim.text || '')}</p>`;
+        // Badge + tooltip wrapper (tabindex so keyboard/tap can trigger :focus-within)
+        html += `    <span class="badge-tooltip-wrap">`;
+        html += `      <span class="confidence-badge confidence-badge--${confKey}" tabindex="0" role="note"
+                         aria-label="${escapeHtml(conf)} confidence — ${escapeHtml(claim.confidence_reason || '')}">
+                         ${escapeHtml(conf)} confidence
+                       </span>`;
+        html += `      <span class="badge-tooltip" role="tooltip">${escapeHtml(claim.confidence_reason || '')}</span>`;
+        html += `    </span>`;
+        html += `  </div>`;
+
+        if (isFlagged) {
+          html += `  <div class="flag-note">`;
+          html += `    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                         <path d="M2 1v10" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+                         <path d="M2 1h7.5L7 4.5l2.5 3.5H2" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+                       </svg>`;
+          html += `    <span>${escapeHtml(claim.flag_reason || 'Needs verification')}</span>`;
+          html += `  </div>`;
+        }
+
+        html += `</div>`; // .claim-row
+      }
+    }
+
+    html += `</div>`; // .theme-block
+  }
+
+  html += '</div>'; // .themes-list
+  el.innerHTML = html;
+  return el;
+}
+
+function renderVerifyList(items) {
+  const el = document.createElement('div');
+  el.className = 'brief-section';
+  const count = Array.isArray(items) ? items.length : 0;
+
+  let html = `<h3 class="brief-section-heading">
+    Verify before publishing <span class="section-count">(${count} item${count !== 1 ? 's' : ''})</span>
+  </h3>`;
+
+  if (count === 0) {
+    html += `<p class="verify-empty">✓ No flagged claims — but always sanity-check before publishing.</p>`;
+  } else {
+    html += `<ul class="verify-list">`;
+    for (const item of items) {
+      html += `<li class="verify-item">${escapeHtml(item)}</li>`;
+    }
+    html += `</ul>`;
+  }
+
+  el.innerHTML = html;
+  return el;
+}
+
+function renderGaps(gaps) {
+  const el = document.createElement('div');
+  el.className = 'brief-section';
+  let html = `<h3 class="brief-section-heading">What's missing</h3><ul class="gaps-list">`;
+  for (const gap of gaps) {
+    html += `<li>${escapeHtml(gap)}</li>`;
+  }
+  html += `</ul>`;
+  el.innerHTML = html;
+  return el;
+}
+
+function renderAngles(angles) {
+  const el = document.createElement('div');
+  el.className = 'brief-section';
+  let html = `<h3 class="brief-section-heading">Suggested next steps</h3><ul class="angles-list">`;
+  for (const angle of angles) {
+    html += `<li>${escapeHtml(angle)}</li>`;
+  }
+  html += `</ul>`;
+  el.innerHTML = html;
+  return el;
+}
+
+// --- Utility ---------------------------------------------------------------
+
 function escapeHtml(str) {
-  return str
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
