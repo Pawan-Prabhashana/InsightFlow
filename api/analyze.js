@@ -159,6 +159,39 @@ ${researchText}
 Remember: respond with ONLY valid JSON matching the schema in your instructions.`;
 }
 
+// Robustly recover a JSON object from Claude's text output.
+// Handles: clean JSON, ```json fences, and stray preamble/trailing prose by
+// falling back to the widest {...} span. Returns the parsed object or null.
+function extractJson(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+
+  // 1. Strip surrounding markdown fences, then try a direct parse.
+  const stripped = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    // fall through to span extraction
+  }
+
+  // 2. Fall back to the first "{" … last "}" span (drops any pre/post prose).
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    try {
+      return JSON.parse(stripped.slice(first, last + 1));
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -208,7 +241,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: TRUST_LAYER_SYSTEM_PROMPT,
         messages: [
           {
@@ -229,23 +262,30 @@ export default async function handler(req, res) {
     }
 
     const anthropicData = await anthropicResponse.json();
-    const rawContent = anthropicData?.content?.[0]?.text ?? '';
+    const stopReason = anthropicData?.stop_reason;
 
-    // Strip any accidental markdown fences Claude may still emit
-    const cleaned = rawContent
-      .trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```$/, '')
-      .trim();
+    // Concatenate every text-type content block. Newer models may emit a
+    // non-text block (e.g. thinking) first, so we can't rely on content[0].
+    const blocks = Array.isArray(anthropicData?.content) ? anthropicData.content : [];
+    const rawContent = blocks
+      .filter((b) => b?.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text)
+      .join('');
 
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error('JSON parse failed. Raw content:', cleaned.slice(0, 500));
+    const parsed = extractJson(rawContent);
+
+    if (!parsed) {
+      // If Claude ran out of tokens mid-object, say so specifically.
+      const truncated = stopReason === 'max_tokens';
+      console.error(
+        `JSON parse failed (stop_reason=${stopReason}, block_types=${blocks.map((b) => b?.type).join(',')}). Raw content:`,
+        String(rawContent).slice(0, 800),
+      );
       return res.status(500).json({
         error: 'processing_failed',
-        message: 'The AI returned a response that could not be parsed. Please try again.',
+        message: truncated
+          ? 'The analysis was too long to complete in one pass. Please shorten your input and try again.'
+          : 'The AI returned a response that could not be parsed. Please try again.',
       });
     }
 
