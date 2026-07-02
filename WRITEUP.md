@@ -14,7 +14,7 @@ InsightFlow is a two-panel web app: paste research on the left, get a structured
 
 ## Tools used
 
-Vanilla HTML/CSS/JavaScript (ES modules, no framework, no build step). One Vercel serverless function calls Anthropic's Claude (`claude-sonnet-4-5`) through the Messages API. The API key lives only in a Vercel environment variable, never in code. Hosted on Vercel.
+Vanilla HTML/CSS/JavaScript (ES modules, no framework, no build step). One Vercel serverless function calls Anthropic's Claude (`claude-sonnet-5`) through the Messages API. The API key lives only in a Vercel environment variable, never in code. Hosted on Vercel.
 
 ## How the workflow works (step-by-step)
 
