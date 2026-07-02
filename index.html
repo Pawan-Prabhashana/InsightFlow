@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="InsightFlow – Turn messy research into trustworthy briefs with AI-powered confidence scoring." />
+  <title>InsightFlow – AI Research-to-Output Agent</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="site-header" role="banner">
+    <div class="header-inner">
+
+      <div class="header-brand">
+        <span class="wordmark" aria-label="InsightFlow">Insight<span>Flow</span></span>
+        <p class="tagline">Turn messy research into trustworthy briefs.</p>
+      </div>
+
+      <div class="trust-pill" role="status" aria-label="Trust Layer is active">
+        <span class="trust-pill-dot" aria-hidden="true"></span>
+        Trust Layer: ON
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ── Main Workspace ──────────────────────────────────────────────────── -->
+  <main class="main-workspace" id="workspace" aria-label="InsightFlow workspace">
+
+    <!-- Left Panel: Research Input -->
+    <section class="panel-card" aria-labelledby="input-panel-title">
+      <div class="panel-header">
+        <div class="panel-icon panel-icon--input" aria-hidden="true">📋</div>
+        <h2 class="panel-title" id="input-panel-title">Research Input</h2>
+        <span class="panel-subtitle">Step 1 of 2</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="input-placeholder-area" role="region" aria-label="Research input area – coming in Part 3">
+          <div class="placeholder-icon" aria-hidden="true">📄</div>
+          <p class="placeholder-label">Paste your research here</p>
+          <p class="placeholder-hint">
+            Notes, article excerpts, link lists — drop anything in and let InsightFlow do the heavy lifting.
+          </p>
+          <span class="coming-badge">Input controls · Part 3</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Brief Output -->
+    <section class="panel-card" aria-labelledby="brief-panel-title">
+      <div class="panel-header">
+        <div class="panel-icon panel-icon--brief" aria-hidden="true">✨</div>
+        <h2 class="panel-title" id="brief-panel-title">Brief</h2>
+        <span class="panel-subtitle">Step 2 of 2</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="brief-empty-state" role="region" aria-label="Brief output – awaiting research input">
+
+          <div class="empty-state-graphic" aria-hidden="true">
+            <div class="ring"></div>
+            <div class="ring-inner"></div>
+            <div class="ring-center">✦</div>
+          </div>
+
+          <p class="empty-state-title">Your analyzed brief will appear here.</p>
+          <p class="empty-state-body">
+            Paste your research in the left panel and run the analysis. InsightFlow will structure your findings and score every claim.
+          </p>
+
+          <div class="trust-layer-preview" aria-label="Confidence level legend">
+            <span class="confidence-chip confidence-chip--high">
+              <span class="dot" aria-hidden="true"></span>
+              High confidence
+            </span>
+            <span class="confidence-chip confidence-chip--med">
+              <span class="dot" aria-hidden="true"></span>
+              Medium confidence
+            </span>
+            <span class="confidence-chip confidence-chip--low">
+              <span class="dot" aria-hidden="true"></span>
+              Needs verification
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <p class="footer-text">
+        <strong>InsightFlow</strong> &nbsp;·&nbsp; AI-assisted, human-approved.
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
