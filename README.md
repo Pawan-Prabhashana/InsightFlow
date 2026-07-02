@@ -2,7 +2,7 @@
 
 **Turn messy research into trustworthy, confidence-scored briefs — with a human approval gate before anything is publish-ready.**
 
-Live demo: _[add your Vercel URL here after deploying]_
+Live demo: https://insight-flow-ebon.vercel.app
 
 ---
 
