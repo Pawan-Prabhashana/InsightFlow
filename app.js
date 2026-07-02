@@ -1,5 +1,5 @@
-// InsightFlow – Part 3: input panel wired to /api/analyze
-// Logic for Parts 4–6 will be added in later sections of this file.
+// InsightFlow – Parts 3–5: input wired to /api/analyze, Trust Layer rendering,
+// human approval gate, flagged-claim checkboxes, and export.
 
 // --- DOM refs -----------------------------------------------------------
 
@@ -14,15 +14,27 @@ const errorMessageEl   = document.getElementById('error-message');
 const briefPanelBody   = document.getElementById('brief-panel-body');
 const segBtns          = document.querySelectorAll('.seg-btn');
 
-// Track the currently selected output type (default matches the HTML active state)
 let selectedOutputType = 'brief';
 
+// --- Session state (Part 5) -----------------------------------------------
+// Single source of truth. Reset on every new Analyze click, before the request.
+//
+// reviewState: { [claimId]: { checked: boolean, text: string } }
+//   claimId = "${themeIndex}-${claimIndex}" — stable within one analysis session.
+
+let reviewState       = {};
+let briefData         = null;  // last successful API response (used for export)
+let isApproved        = false;
+let approvalTimestamp = null;
+
+function resetSessionState() {
+  reviewState       = {};
+  briefData         = null;
+  isApproved        = false;
+  approvalTimestamp = null;
+}
+
 // --- Sample data ---------------------------------------------------------
-// Three realistic prefill samples for manual testing convenience.
-// Content is chosen to exercise different Trust Layer behaviours:
-//   clean  → multiple corroborating, specific claims  → low escalation
-//   messy  → contradictions + vague sources           → mixed confidence, flags
-//   thin   → very short + health claims               → escalate: true
 
 const SAMPLES = {
   clean: `Q3 2024 competitive analysis — SaaS project management tools:
@@ -77,7 +89,7 @@ function updateCharCounter() {
   charCounterEl.classList.toggle('char-counter--over', len > 20000);
 }
 
-// --- UI state helpers ---------------------------------------------------
+// --- Input UI helpers ---------------------------------------------------
 
 function setLoading(isLoading) {
   analyzeBtn.classList.toggle('btn-analyze--loading', isLoading);
@@ -103,12 +115,14 @@ analyzeBtn.addEventListener('click', runAnalysis);
 async function runAnalysis() {
   hideError();
 
-  // Basic client-side UX check only — real validation lives in api/analyze.js
   const text = researchTextarea.value.trim();
   if (!text) {
     showError('Please paste some research text before analyzing.');
     return;
   }
+
+  // Reset ALL session state before every request — this also clears old brief
+  resetSessionState();
 
   setLoading(true);
 
@@ -126,11 +140,11 @@ async function runAnalysis() {
     const data = await response.json();
 
     if (!response.ok) {
-      // Show the exact message from the API's { error, message } envelope
       showError(data.message || `Request failed (${response.status}). Please try again.`);
       return;
     }
 
+    briefData = data;
     renderBrief(data);
   } catch {
     showError('Network error — please check your connection and try again.');
@@ -139,51 +153,301 @@ async function runAnalysis() {
   }
 }
 
-// --- Render (Part 4) -------------------------------------------------------
-// Full Trust Layer brief renderer. Each sub-function returns a DOM Element.
-// renderBrief() orchestrates them and injects into the right panel.
+// --- Review state (Part 5) -----------------------------------------------
 
-function renderBrief(data) {
-  // Clear previous results cleanly before painting new ones
-  briefPanelBody.innerHTML = '';
+// Build reviewState from themes. Only flagged claims get entries.
+function buildReviewState(themes) {
+  const state = {};
+  if (!Array.isArray(themes)) return state;
+  themes.forEach((theme, ti) => {
+    (theme.claims || []).forEach((claim, ci) => {
+      if (claim.flagged === true) {
+        state[`${ti}-${ci}`] = { checked: false, text: claim.text || '' };
+      }
+    });
+  });
+  return state;
+}
 
-  const output = document.createElement('div');
-  output.className = 'brief-output';
+// Single handler for any checkbox change (claim row OR verify list).
+// Updates reviewState → syncs both checkbox locations → updates all UI.
+function onClaimCheck(claimId, checked) {
+  if (!reviewState[claimId]) return;
+  reviewState[claimId].checked = checked;
 
-  // 1. Escalation banner — always first if present
-  if (data.escalate) {
-    output.appendChild(renderEscalationBanner(data.escalation_reason));
+  // Sync every checkbox input sharing this claimId (theme + verify list)
+  document.querySelectorAll(`input.verify-checkbox[data-claim-id="${claimId}"]`).forEach((cb) => {
+    cb.checked = checked;
+  });
+
+  // Sync custom checkmark visuals
+  document.querySelectorAll(`.verify-checkmark[data-claim-id="${claimId}"]`).forEach((mark) => {
+    mark.classList.toggle('verify-checkmark--checked', checked);
+  });
+
+  // Update claim row in Findings section
+  const claimRow = document.querySelector(`.claim-row[data-claim-id="${claimId}"]`);
+  if (claimRow) claimRow.classList.toggle('claim-row--verified', checked);
+
+  // Update item in Verify list
+  const verifyItem = document.querySelector(`.verify-item[data-claim-id="${claimId}"]`);
+  if (verifyItem) verifyItem.classList.toggle('verify-item--verified', checked);
+
+  syncApprovalState();
+}
+
+// Re-derive all approval UI from current reviewState.
+function syncApprovalState() {
+  const allIds     = Object.keys(reviewState);
+  const unchecked  = allIds.filter((id) => !reviewState[id].checked).length;
+  const allDone    = unchecked === 0;
+
+  // Status bar hint
+  const draftHint = document.getElementById('draft-hint');
+  if (draftHint) {
+    if (allIds.length === 0) {
+      draftHint.textContent = 'No flagged claims — ready to approve immediately.';
+    } else if (allDone) {
+      draftHint.textContent = 'All claims reviewed — ready to approve.';
+    } else {
+      draftHint.textContent =
+        `${unchecked} item${unchecked !== 1 ? 's' : ''} need${unchecked === 1 ? 's' : ''} review before this is publish-ready`;
+    }
   }
 
-  // 2. Main content wrapper (de-emphasized when escalated)
-  const content = document.createElement('div');
-  content.className = data.escalate
-    ? 'brief-content brief-content--escalated'
-    : 'brief-content';
+  // Approve button
+  const approveBtn = document.getElementById('approve-btn');
+  if (approveBtn) {
+    approveBtn.disabled = !allDone;
+    approveBtn.querySelector('.approve-btn-label').textContent = allDone
+      ? 'Approve brief for use'
+      : 'Approve brief';
+  }
+}
 
+// One-way approval action. Called when the human clicks "Approve brief for use".
+function handleApprove() {
+  if (isApproved) return;
+  isApproved        = true;
+  approvalTimestamp = new Date();
+
+  // Flip draft pill → approved
+  const draftPill = document.getElementById('draft-pill');
+  if (draftPill) {
+    draftPill.className   = 'draft-pill draft-pill--approved';
+    draftPill.textContent = 'APPROVED BY HUMAN';
+  }
+  const draftHint = document.getElementById('draft-hint');
+  if (draftHint) {
+    draftHint.textContent = `Approved on ${formatDate(approvalTimestamp)}`;
+  }
+
+  // Replace approve bar content with confirmation + copy button
+  const approveBar = document.getElementById('approve-bar');
+  if (approveBar) {
+    approveBar.innerHTML = `
+      <p class="approve-confirmed">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+          <circle cx="7.5" cy="7.5" r="6.25" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M4.75 7.5l2.25 2.25 3.25-3.75" stroke="currentColor" stroke-width="1.25"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Approved and ready to export.
+      </p>
+      <button class="btn-copy" id="copy-btn" type="button">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <rect x="4.5" y="4.5" width="8" height="8" rx="1.5"
+                stroke="currentColor" stroke-width="1.25"/>
+          <path d="M2.5 9.5v-7a1 1 0 0 1 1-1h7" stroke="currentColor"
+                stroke-width="1.25" stroke-linecap="round"/>
+        </svg>
+        <span class="copy-label">Copy brief</span>
+      </button>
+    `;
+    document.getElementById('copy-btn').addEventListener('click', handleCopy);
+  }
+}
+
+// Copy plain-text brief to clipboard. Only enabled post-approval.
+async function handleCopy() {
+  if (!briefData || !approvalTimestamp) return;
+  const text  = buildExportText(briefData, approvalTimestamp);
+  const btn   = document.getElementById('copy-btn');
+  const label = btn?.querySelector('.copy-label');
+
+  try {
+    await navigator.clipboard.writeText(text);
+    if (label) label.textContent = 'Copied!';
+    btn?.classList.add('btn-copy--success');
+  } catch {
+    if (label) label.textContent = 'Copy failed';
+  } finally {
+    setTimeout(() => {
+      if (label) label.textContent = 'Copy brief';
+      btn?.classList.remove('btn-copy--success');
+    }, 2000);
+  }
+}
+
+// Build a clean plain-text export of the approved brief.
+function buildExportText(data, timestamp) {
+  const lines = [
+    'INSIGHTFLOW BRIEF',
+    '═════════════════',
+    '',
+    'SUMMARY',
+    '───────',
+    data.tldr || '',
+    '',
+  ];
+
+  if (Array.isArray(data.themes) && data.themes.length > 0) {
+    lines.push('FINDINGS', '────────');
+    for (const theme of data.themes) {
+      lines.push('', `■ ${theme.title}`);
+      for (const claim of (theme.claims || [])) {
+        lines.push(`  • [${claim.confidence || 'Medium'}] ${claim.text || ''}`);
+        if (claim.flagged) {
+          lines.push(`    ⚠ ${claim.flag_reason || 'Flagged for review'} — verified by human`);
+        }
+      }
+    }
+    lines.push('');
+  }
+
+  if (Array.isArray(data.gaps) && data.gaps.length > 0) {
+    lines.push('GAPS / MISSING INFORMATION', '──────────────────────────');
+    for (const gap of data.gaps) lines.push(`  ? ${gap}`);
+    lines.push('');
+  }
+
+  if (Array.isArray(data.suggested_angles) && data.suggested_angles.length > 0) {
+    lines.push('SUGGESTED NEXT STEPS', '────────────────────');
+    for (const angle of data.suggested_angles) lines.push(`  → ${angle}`);
+    lines.push('');
+  }
+
+  lines.push(
+    '─────────────────────────────────────────────────',
+    `APPROVED BY HUMAN: ${formatDate(timestamp)}`,
+    'Generated by InsightFlow — AI-assisted, human-approved.',
+  );
+
+  return lines.join('\n');
+}
+
+// --- Render (Parts 4–5) ---------------------------------------------------
+// renderBrief() is the single entry point. Two paths: escalated vs. normal.
+
+function renderBrief(data) {
+  briefPanelBody.innerHTML = '';
+
+  // Build review state from this response
+  reviewState = buildReviewState(data.themes);
+
+  // ── Escalated path: no draft bar, no checkboxes, no approval flow ──
   if (data.escalate) {
+    const output = document.createElement('div');
+    output.className = 'brief-output';
+    output.appendChild(renderEscalationBanner(data.escalation_reason));
+
+    const routeMsg = document.createElement('div');
+    routeMsg.className = 'routing-message';
+    routeMsg.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 6v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="10" cy="14" r="0.875" fill="currentColor"/>
+      </svg>
+      <p>InsightFlow will not produce an approvable brief for this input.
+         Route this to a human researcher.</p>
+    `;
+    output.appendChild(routeMsg);
+
+    // Best-effort read-only content (de-emphasized)
+    const content = document.createElement('div');
+    content.className = 'brief-content brief-content--escalated';
     const sublabel = document.createElement('p');
     sublabel.className = 'escalated-sublabel';
     sublabel.textContent = 'Best-effort analysis only — do not publish without expert review.';
     content.appendChild(sublabel);
+    content.appendChild(renderTldr(data.tldr));
+    if (Array.isArray(data.themes) && data.themes.length > 0) {
+      content.appendChild(renderThemesInner(data.themes, false));
+    }
+    output.appendChild(content);
+
+    briefPanelBody.appendChild(output);
+    return;
   }
 
-  content.appendChild(renderTldr(data.tldr));
-  content.appendChild(renderThemes(data.themes));
-  content.appendChild(renderVerifyList(data.verify_before_publishing));
+  // ── Normal path: full approval flow ──
 
-  // Gaps: hidden entirely when array is empty (per spec)
+  // Draft status bar — direct child of #brief-panel-body so sticky works correctly
+  briefPanelBody.appendChild(renderDraftStatusBar());
+
+  const output = document.createElement('div');
+  output.className = 'brief-output';
+
+  output.appendChild(renderTldr(data.tldr));
+  output.appendChild(renderThemesInner(data.themes, true));     // interactive
+  output.appendChild(renderVerifyList(data.themes));             // built from themes
   if (Array.isArray(data.gaps) && data.gaps.length > 0) {
-    content.appendChild(renderGaps(data.gaps));
+    output.appendChild(renderGaps(data.gaps));
   }
-
-  // Suggested angles: hidden entirely when escalate is true (per API contract)
-  if (!data.escalate && Array.isArray(data.suggested_angles) && data.suggested_angles.length > 0) {
-    content.appendChild(renderAngles(data.suggested_angles));
+  if (Array.isArray(data.suggested_angles) && data.suggested_angles.length > 0) {
+    output.appendChild(renderAngles(data.suggested_angles));
   }
+  output.appendChild(renderApproveBar());
 
-  output.appendChild(content);
   briefPanelBody.appendChild(output);
+
+  // Attach checkbox listeners — single pass after all DOM is built
+  document.querySelectorAll('input.verify-checkbox').forEach((cb) => {
+    cb.addEventListener('change', () => onClaimCheck(cb.dataset.claimId, cb.checked));
+  });
+
+  // Approve button
+  document.getElementById('approve-btn')?.addEventListener('click', handleApprove);
+
+  // Sync initial state (sets approve button enabled/disabled, hint text)
+  syncApprovalState();
+}
+
+// ── Sub-renderers ──
+
+function renderDraftStatusBar() {
+  const flaggedCount = Object.keys(reviewState).length;
+  const bar = document.createElement('div');
+  bar.className = 'draft-status-bar';
+  bar.id = 'draft-status-bar';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = `
+    <span class="draft-pill draft-pill--pending" id="draft-pill">DRAFT — NOT APPROVED</span>
+    <span class="draft-hint" id="draft-hint">
+      ${flaggedCount > 0
+        ? `${flaggedCount} item${flaggedCount !== 1 ? 's' : ''} need review before this is publish-ready`
+        : 'No flagged claims — ready to approve immediately.'}
+    </span>
+  `;
+  return bar;
+}
+
+function renderApproveBar() {
+  const bar = document.createElement('div');
+  bar.className = 'approve-bar brief-section';
+  bar.id = 'approve-bar';
+  bar.innerHTML = `
+    <p class="approve-hint" id="approve-hint">Check all flagged claims to enable approval.</p>
+    <button class="btn-approve" id="approve-btn" type="button" disabled>
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+        <path d="M3 7.5l3.5 3.5 5.5-6" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="approve-btn-label">Approve brief</span>
+    </button>
+  `;
+  return bar;
 }
 
 function renderEscalationBanner(reason) {
@@ -192,7 +456,7 @@ function renderEscalationBanner(reason) {
   el.setAttribute('role', 'alert');
   el.innerHTML = `
     <div class="escalation-icon" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M10 2.5 2.5 17h15L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
         <line x1="10" y1="8.5" x2="10" y2="12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <circle cx="10" cy="14.75" r="0.875" fill="currentColor"/>
@@ -216,7 +480,8 @@ function renderTldr(tldr) {
   return el;
 }
 
-function renderThemes(themes) {
+// Core themes renderer. interactive=true adds checkboxes to flagged claims.
+function renderThemesInner(themes, interactive) {
   const el = document.createElement('div');
   el.className = 'brief-section';
 
@@ -230,7 +495,7 @@ function renderThemes(themes) {
 
   let html = '<h3 class="brief-section-heading">Findings</h3><div class="themes-list">';
 
-  for (const theme of themes) {
+  themes.forEach((theme, ti) => {
     html += `<div class="theme-block">`;
     html += `<h4 class="theme-title">${escapeHtml(theme.title || 'Untitled theme')}</h4>`;
 
@@ -238,51 +503,77 @@ function renderThemes(themes) {
     if (claims.length === 0) {
       html += `<p class="brief-empty-note">No claims recorded for this theme.</p>`;
     } else {
-      for (const claim of claims) {
-        const conf     = claim.confidence || 'Medium';
-        const confKey  = conf.toLowerCase();   // 'high' | 'medium' | 'low'
+      claims.forEach((claim, ci) => {
+        const conf      = claim.confidence || 'Medium';
+        const confKey   = conf.toLowerCase();
         const isFlagged = claim.flagged === true;
+        const claimId   = `${ti}-${ci}`;
 
-        html += `<div class="claim-row${isFlagged ? ' claim-row--flagged' : ''}">`;
+        html += `<div class="claim-row${isFlagged ? ' claim-row--flagged' : ''}"
+                      ${interactive && isFlagged ? `data-claim-id="${claimId}"` : ''}>`;
         html += `  <div class="claim-main">`;
         html += `    <p class="claim-text">${escapeHtml(claim.text || '')}</p>`;
-        // Badge + tooltip wrapper (tabindex so keyboard/tap can trigger :focus-within)
         html += `    <span class="badge-tooltip-wrap">`;
         html += `      <span class="confidence-badge confidence-badge--${confKey}" tabindex="0" role="note"
-                         aria-label="${escapeHtml(conf)} confidence — ${escapeHtml(claim.confidence_reason || '')}">
-                         ${escapeHtml(conf)} confidence
-                       </span>`;
+                           aria-label="${escapeHtml(conf)} confidence — ${escapeHtml(claim.confidence_reason || '')}">
+                           ${escapeHtml(conf)} confidence
+                         </span>`;
         html += `      <span class="badge-tooltip" role="tooltip">${escapeHtml(claim.confidence_reason || '')}</span>`;
         html += `    </span>`;
         html += `  </div>`;
 
         if (isFlagged) {
-          html += `  <div class="flag-note">`;
-          html += `    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          html += `  <div class="flag-note">
+                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                          <path d="M2 1v10" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
-                         <path d="M2 1h7.5L7 4.5l2.5 3.5H2" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
-                       </svg>`;
-          html += `    <span>${escapeHtml(claim.flag_reason || 'Needs verification')}</span>`;
-          html += `  </div>`;
+                         <path d="M2 1h7.5L7 4.5l2.5 3.5H2" stroke="currentColor"
+                               stroke-width="1.25" stroke-linejoin="round"/>
+                       </svg>
+                       <span>${escapeHtml(claim.flag_reason || 'Needs verification')}</span>
+                     </div>`;
+
+          if (interactive) {
+            // Hidden native checkbox + custom visual + label text
+            html += `  <label class="verify-check-label">
+                         <input type="checkbox" class="verify-checkbox"
+                                data-claim-id="${claimId}"
+                                aria-label="I've verified this claim" />
+                         <span class="verify-checkmark" data-claim-id="${claimId}"
+                               aria-hidden="true"></span>
+                         <span class="verify-check-text">I've verified this claim</span>
+                       </label>`;
+          }
         }
 
         html += `</div>`; // .claim-row
-      }
+      });
     }
-
     html += `</div>`; // .theme-block
-  }
+  });
 
   html += '</div>'; // .themes-list
   el.innerHTML = html;
   return el;
 }
 
-function renderVerifyList(items) {
+// Verify list — rebuilt from themes so claim IDs match the review state exactly.
+function renderVerifyList(themes) {
   const el = document.createElement('div');
   el.className = 'brief-section';
-  const count = Array.isArray(items) ? items.length : 0;
 
+  // Collect flagged claims with their stable claim IDs
+  const flagged = [];
+  if (Array.isArray(themes)) {
+    themes.forEach((theme, ti) => {
+      (theme.claims || []).forEach((claim, ci) => {
+        if (claim.flagged === true) {
+          flagged.push({ id: `${ti}-${ci}`, text: claim.text || '' });
+        }
+      });
+    });
+  }
+
+  const count = flagged.length;
   let html = `<h3 class="brief-section-heading">
     Verify before publishing <span class="section-count">(${count} item${count !== 1 ? 's' : ''})</span>
   </h3>`;
@@ -291,8 +582,16 @@ function renderVerifyList(items) {
     html += `<p class="verify-empty">✓ No flagged claims — but always sanity-check before publishing.</p>`;
   } else {
     html += `<ul class="verify-list">`;
-    for (const item of items) {
-      html += `<li class="verify-item">${escapeHtml(item)}</li>`;
+    for (const { id, text } of flagged) {
+      html += `<li class="verify-item" data-claim-id="${id}">
+                 <label class="verify-check-label verify-check-label--list">
+                   <input type="checkbox" class="verify-checkbox"
+                          data-claim-id="${id}"
+                          aria-label="Mark as verified: ${escapeHtml(text)}" />
+                   <span class="verify-checkmark" data-claim-id="${id}" aria-hidden="true"></span>
+                   <span class="verify-check-text">${escapeHtml(text)}</span>
+                 </label>
+               </li>`;
     }
     html += `</ul>`;
   }
@@ -305,9 +604,7 @@ function renderGaps(gaps) {
   const el = document.createElement('div');
   el.className = 'brief-section';
   let html = `<h3 class="brief-section-heading">What's missing</h3><ul class="gaps-list">`;
-  for (const gap of gaps) {
-    html += `<li>${escapeHtml(gap)}</li>`;
-  }
+  for (const gap of gaps) html += `<li>${escapeHtml(gap)}</li>`;
   html += `</ul>`;
   el.innerHTML = html;
   return el;
@@ -317,15 +614,20 @@ function renderAngles(angles) {
   const el = document.createElement('div');
   el.className = 'brief-section';
   let html = `<h3 class="brief-section-heading">Suggested next steps</h3><ul class="angles-list">`;
-  for (const angle of angles) {
-    html += `<li>${escapeHtml(angle)}</li>`;
-  }
+  for (const angle of angles) html += `<li>${escapeHtml(angle)}</li>`;
   html += `</ul>`;
   el.innerHTML = html;
   return el;
 }
 
 // --- Utility ---------------------------------------------------------------
+
+function formatDate(date) {
+  return date.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
+}
 
 function escapeHtml(str) {
   return String(str)

@@ -1152,3 +1152,280 @@ body {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* ─── Part 5: Human Approval Gate ───────────────────────────────────────── */
+
+/* Brief panel body: scroll container + zero padding so status bar can be full-width sticky */
+#brief-panel-body {
+  padding: 0;
+  overflow-y: auto;
+  max-height: calc(100dvh - var(--header-h) - 96px);
+}
+
+/* Brief output gets its own padding */
+.brief-output {
+  padding: 20px 24px 28px;
+}
+
+/* ── Draft status bar (sticky within scroll container) ────────────────────── */
+
+.draft-status-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.draft-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+
+.draft-pill--pending {
+  background: var(--med-soft);
+  color: var(--med);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+.draft-pill--approved {
+  background: var(--high-soft);
+  color: var(--high);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.draft-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Routing message (escalated path only) ────────────────────────────────── */
+
+.routing-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #F8FAFC;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 0.8375rem;
+  line-height: 1.55;
+}
+
+.routing-message svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.routing-message p {
+  margin: 0;
+}
+
+/* ── Custom checkboxes ────────────────────────────────────────────────────── */
+
+.verify-check-label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 6px 0 2px;
+}
+
+.verify-check-label:hover .verify-checkmark {
+  border-color: var(--brand);
+}
+
+.verify-check-label--list {
+  width: 100%;
+  font-size: 0.83rem;
+  color: var(--text);
+  font-weight: 400;
+  padding: 0;
+}
+
+/* Native checkbox: visually hidden, accessible */
+.verify-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* Custom checkbox box */
+.verify-checkmark {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+/* Checked state — via JS setting cb.checked, CSS :checked won't work on hidden el
+   We'll toggle .verify-checkmark--checked class via JS when syncing state */
+.verify-checkmark--checked {
+  background: var(--high);
+  border-color: var(--high);
+}
+
+/* Checkmark tick */
+.verify-checkmark--checked::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+.verify-checkbox:focus-visible ~ .verify-checkmark {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Claim row: verified state */
+.claim-row--verified {
+  border-left-color: var(--high) !important;
+  background: rgba(22, 163, 74, 0.04) !important;
+  opacity: 0.75;
+}
+
+.claim-row--verified .flag-note {
+  color: var(--high);
+  opacity: 0.7;
+}
+
+/* Verify list item: verified state */
+.verify-item--verified {
+  border-left-color: var(--high);
+  background: var(--high-soft);
+  opacity: 0.75;
+}
+
+.verify-item--verified .verify-check-text {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* ── Approve bar ──────────────────────────────────────────────────────────── */
+
+.approve-bar {
+  background: var(--brand-soft) !important;
+  border-color: rgba(79, 70, 229, 0.2) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.approve-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.btn-approve {
+  width: 100%;
+  padding: 13px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.6;
+  transition: background var(--transition), color var(--transition),
+              border-color var(--transition), box-shadow var(--transition), opacity var(--transition);
+}
+
+.btn-approve:not(:disabled) {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.btn-approve:not(:disabled):hover {
+  background: #4338CA;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+/* Post-approval confirmation */
+.approve-confirmed {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--high);
+  margin: 0;
+}
+
+/* Copy brief button */
+.btn-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 20px;
+  border: 1.5px solid rgba(22, 163, 74, 0.3);
+  border-radius: var(--radius-md);
+  background: var(--high-soft);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--high);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.btn-copy:hover {
+  background: #BBF7D0;
+  border-color: rgba(22, 163, 74, 0.5);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
+}
+
+.btn-copy--success {
+  background: var(--high);
+  color: #fff;
+  border-color: var(--high);
+}
