@@ -438,3 +438,323 @@ body {
     font-size: 1.125rem;
   }
 }
+
+/* ─── Part 3: Input Form ─────────────────────────────────────────────────── */
+
+.input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+/* Field groups */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.6875rem;
+}
+
+/* Textarea */
+.textarea-wrap {
+  position: relative;
+}
+
+.research-textarea {
+  width: 100%;
+  min-height: 210px;
+  padding: 12px 14px 30px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.research-textarea::placeholder {
+  color: #94A3B8;
+}
+
+.research-textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  background: var(--surface);
+}
+
+.char-counter {
+  position: absolute;
+  bottom: 9px;
+  right: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.char-counter--over {
+  color: var(--low);
+  font-weight: 600;
+}
+
+/* Segmented control */
+.seg-control {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  transition: background var(--transition), color var(--transition);
+  line-height: 1;
+}
+
+.seg-btn:last-child {
+  border-right: none;
+}
+
+.seg-btn:hover:not(.seg-btn--active) {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.seg-btn--active {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Audience / goal text input */
+.audience-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.audience-input::placeholder {
+  color: #94A3B8;
+}
+
+.audience-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  background: var(--surface);
+}
+
+/* Sample prefill row */
+.sample-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sample-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+.btn-sample {
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  line-height: 1.5;
+}
+
+.btn-sample:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+/* Error banner */
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 14px;
+  background: var(--low-soft);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  color: var(--low);
+  line-height: 1.5;
+}
+
+.error-banner[hidden] {
+  display: none;
+}
+
+.error-icon {
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Primary analyze button */
+.btn-analyze {
+  width: 100%;
+  padding: 13px 24px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: auto;
+  transition: background var(--transition), box-shadow var(--transition), opacity var(--transition);
+}
+
+.btn-analyze:hover:not(:disabled) {
+  background: #4338CA;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.38);
+}
+
+.btn-analyze:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Spinner inside analyze button */
+.btn-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+.btn-analyze--loading .btn-spinner {
+  display: block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Part 3: Raw output (temporary until Part 4) ────────────────────────── */
+
+.raw-output-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.raw-output-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.raw-output-badge {
+  display: inline-flex;
+  padding: 2px 9px;
+  background: var(--med-soft);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--med);
+  letter-spacing: 0.03em;
+}
+
+.raw-output {
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.65;
+  color: var(--text);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 560px;
+  flex: 1;
+}
+
+/* ─── Responsive additions (Part 3) ─────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .seg-btn {
+    font-size: 0.7rem;
+    padding: 8px 4px;
+  }
+
+  .sample-row {
+    gap: 5px;
+  }
+}

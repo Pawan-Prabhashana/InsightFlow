@@ -38,13 +38,68 @@
       </div>
 
       <div class="panel-body">
-        <div class="input-placeholder-area" role="region" aria-label="Research input area – coming in Part 3">
-          <div class="placeholder-icon" aria-hidden="true">📄</div>
-          <p class="placeholder-label">Paste your research here</p>
-          <p class="placeholder-hint">
-            Notes, article excerpts, link lists — drop anything in and let InsightFlow do the heavy lifting.
-          </p>
-          <span class="coming-badge">Input controls · Part 3</span>
+        <div class="input-form">
+
+          <!-- Textarea + character counter -->
+          <div class="field-group">
+            <div class="textarea-wrap">
+              <textarea
+                id="research-text"
+                class="research-textarea"
+                placeholder="Paste your research here — notes, article text, bullet points, quotes, links with context..."
+                aria-label="Research text"
+                aria-describedby="char-counter"
+              ></textarea>
+              <span class="char-counter" id="char-counter" aria-live="polite">
+                <span id="char-count">0</span> / 20,000
+              </span>
+            </div>
+          </div>
+
+          <!-- Output type segmented control -->
+          <div class="field-group">
+            <label class="field-label" id="output-type-label">Output type</label>
+            <div class="seg-control" role="group" aria-labelledby="output-type-label">
+              <button class="seg-btn" data-type="summary" type="button">Summary</button>
+              <button class="seg-btn seg-btn--active" data-type="brief" type="button">Brief</button>
+              <button class="seg-btn" data-type="report" type="button">Report</button>
+              <button class="seg-btn" data-type="recommendation" type="button">Recommendation</button>
+            </div>
+          </div>
+
+          <!-- Audience / goal -->
+          <div class="field-group">
+            <label class="field-label" for="audience-input">
+              Audience / goal <span class="field-optional">(optional)</span>
+            </label>
+            <input
+              id="audience-input"
+              type="text"
+              class="audience-input"
+              placeholder="Who is this for? e.g. 'marketing team, blog post angle'"
+            />
+          </div>
+
+          <!-- Sample prefill buttons -->
+          <div class="sample-row">
+            <span class="sample-label">Try a sample:</span>
+            <button class="btn-sample" data-sample="clean" type="button">Clean research</button>
+            <button class="btn-sample" data-sample="messy" type="button">Messy research</button>
+            <button class="btn-sample" data-sample="thin" type="button">Thin / risky input</button>
+          </div>
+
+          <!-- Inline error banner (hidden until an error occurs) -->
+          <div class="error-banner" id="error-banner" role="alert" hidden>
+            <span class="error-icon" aria-hidden="true">⚠</span>
+            <span id="error-message"></span>
+          </div>
+
+          <!-- Primary action -->
+          <button class="btn-analyze" id="analyze-btn" type="button">
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <span class="btn-label">Analyze</span>
+          </button>
+
         </div>
       </div>
     </section>
@@ -57,7 +112,7 @@
         <span class="panel-subtitle">Step 2 of 2</span>
       </div>
 
-      <div class="panel-body">
+      <div class="panel-body" id="brief-panel-body">
         <div class="brief-empty-state" role="region" aria-label="Brief output – awaiting research input">
 
           <div class="empty-state-graphic" aria-hidden="true">
