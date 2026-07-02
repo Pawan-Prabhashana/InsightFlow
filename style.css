@@ -1429,3 +1429,169 @@ body {
   color: #fff;
   border-color: var(--high);
 }
+
+/* ─── Part 6: Demo mode card ─────────────────────────────────────────────── */
+
+.demo-card {
+  background: linear-gradient(135deg, var(--brand-soft) 0%, #F5F3FF 100%);
+  border: 1px solid rgba(79, 70, 229, 0.22);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demo-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demo-card-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.demo-card-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.demo-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.btn-demo {
+  flex: 1 1 auto;
+  padding: 8px 12px;
+  border: 1.5px solid var(--brand);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--brand);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.btn-demo:hover {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.3);
+}
+
+.btn-demo:active {
+  transform: translateY(1px);
+}
+
+/* Sample-row sub-label ("uses live API") */
+.sample-sublabel {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94A3B8;
+}
+
+/* ─── Part 6: Responsive polish (down to 375px) ──────────────────────────── */
+
+@media (max-width: 900px) {
+  /* On stacked layout the right panel no longer needs a tall viewport-locked
+     scroll area — let it grow with content so nothing is trapped behind scroll. */
+  #brief-panel-body {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  /* Sticky status bar has no scroll container to stick within once the page
+     itself scrolls; keep it in flow so it can't overlap content. */
+  .draft-status-bar {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .main-workspace {
+    padding: 16px 12px 32px;
+  }
+
+  .brief-output {
+    padding: 16px 16px 24px;
+  }
+
+  .brief-section {
+    padding: 15px 16px;
+  }
+
+  /* Confidence badge drops below the claim text instead of squeezing beside it */
+  .claim-main {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .badge-tooltip-wrap {
+    align-self: flex-start;
+    margin-top: 0;
+  }
+
+  /* Tooltip could overflow a narrow screen — cap its width and keep it on-screen */
+  .badge-tooltip {
+    width: min(230px, 78vw);
+  }
+
+  .draft-status-bar {
+    padding: 11px 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  /* Demo + sample buttons go full-width so touch targets stay comfortable */
+  .btn-demo,
+  .btn-sample {
+    flex: 1 1 100%;
+    text-align: center;
+    padding: 9px 12px;
+  }
+
+  .sample-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sample-label {
+    margin-bottom: 2px;
+  }
+
+  /* Segmented control wraps to a 2×2 grid rather than shrinking text to nothing */
+  .seg-control {
+    flex-wrap: wrap;
+  }
+
+  .seg-btn {
+    flex: 1 1 50%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .seg-btn:nth-child(2) {
+    border-right: none;
+  }
+
+  .research-textarea {
+    min-height: 170px;
+  }
+}

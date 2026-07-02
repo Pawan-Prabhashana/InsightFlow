@@ -1,0 +1,7 @@
+{
+  "name": "insightflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Research-to-Output agent that turns messy research into trustworthy, confidence-scored briefs.",
+  "type": "module"
+}

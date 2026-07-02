@@ -1,5 +1,7 @@
-// InsightFlow – Parts 3–5: input wired to /api/analyze, Trust Layer rendering,
-// human approval gate, flagged-claim checkboxes, and export.
+// InsightFlow – Parts 3–6: input wired to /api/analyze, Trust Layer rendering,
+// human approval gate, flagged-claim checkboxes, export, and baked-in demo mode.
+
+import { DEMO_CASES } from './data/demo-cases.js';
 
 // --- DOM refs -----------------------------------------------------------
 
@@ -13,6 +15,7 @@ const errorBanner      = document.getElementById('error-banner');
 const errorMessageEl   = document.getElementById('error-message');
 const briefPanelBody   = document.getElementById('brief-panel-body');
 const segBtns          = document.querySelectorAll('.seg-btn');
+const demoBtnRow       = document.getElementById('demo-btn-row');
 
 let selectedOutputType = 'brief';
 
@@ -78,6 +81,50 @@ document.querySelectorAll('.btn-sample').forEach((btn) => {
     researchTextarea.focus();
   });
 });
+
+// --- Instant demo mode (Part 6) -------------------------------------------
+// Builds one button per baked-in demo case. Clicking a button SKIPS the network
+// call entirely and renders the hand-crafted `result` through the exact same
+// render pipeline (renderBrief) used for live API responses — so the approval
+// gate and export are fully interactive, not a static mock.
+
+function initDemoMode() {
+  if (!demoBtnRow) return;
+  DEMO_CASES.forEach((demoCase) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-demo';
+    btn.textContent = demoCase.label;
+    btn.addEventListener('click', () => runDemo(demoCase));
+    demoBtnRow.appendChild(btn);
+  });
+}
+
+function runDemo(demoCase) {
+  hideError();
+
+  // Reset session state, THEN set briefData so export works post-approval
+  resetSessionState();
+  briefData = demoCase.result;
+
+  // Mirror the case into the input panel so evaluators see the source too
+  researchTextarea.value = demoCase.inputText;
+  updateCharCounter();
+  audienceInput.value = demoCase.audience || '';
+  setOutputType(demoCase.outputType || 'brief');
+
+  // Same render pipeline as a live response
+  renderBrief(demoCase.result);
+  briefPanelBody.scrollTop = 0;
+}
+
+// Sync the segmented control to a given output type value.
+function setOutputType(type) {
+  selectedOutputType = type;
+  segBtns.forEach((b) => b.classList.toggle('seg-btn--active', b.dataset.type === type));
+}
+
+initDemoMode();
 
 // --- Character counter --------------------------------------------------
 
